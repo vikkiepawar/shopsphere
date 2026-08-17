@@ -1,75 +1,63 @@
 const Order = require("../models/Order");
-const Cart = require("../models/Cart");
 
-const placeOrder = async (req, res) => {
+const createOrder = async (req, res) => {
   try {
+    const {
+      items,
+      totalAmount,
+      shippingAddress,
+    } = req.body;
 
-    const cart = await Cart.find({ user: req.user.id }).populate("product");
-
-    if (cart.length === 0) {
+    if (!items || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Cart is Empty",
+        message: "Order must contain products",
       });
     }
-
-    let total = 0;
-
-    const items = cart.map((item) => {
-      total += item.product.price * item.quantity;
-
-      return {
-        product: item.product._id,
-        quantity: item.quantity,
-      };
-    });
 
     const order = await Order.create({
       user: req.user.id,
       items,
-      totalAmount: total,
+      totalAmount,
+      shippingAddress,
     });
-
-    await Cart.deleteMany({ user: req.user.id });
 
     res.status(201).json({
       success: true,
-      message: "Order Placed Successfully",
+      message: "Order placed successfully",
       order,
     });
-
   } catch (error) {
+    console.error("CREATE ORDER ERROR:", error);
 
     res.status(500).json({
       success: false,
       message: error.message,
     });
-
   }
 };
-
 const getMyOrders = async (req, res) => {
   try {
-
-    const orders = await Order.find({ user: req.user.id })
-      .populate("items.product");
+    const orders = await Order.find({
+      user: req.user.id,
+    })
+      .populate("items.product")
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
+      count: orders.length,
       orders,
     });
-
   } catch (error) {
-
     res.status(500).json({
       success: false,
       message: error.message,
     });
-
   }
 };
 
 module.exports = {
-  placeOrder,
+  createOrder,
   getMyOrders,
 };

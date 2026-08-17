@@ -1,100 +1,152 @@
-import { useEffect, useState } from "react";
-import API from "../services/api";
+import { useNavigate } from "react-router-dom";
+import { ShoppingBag, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+import CartItem from "../components/CartItem";
+import { useCart } from "../context/CartContext";
 
 function Cart() {
-  const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const token = localStorage.getItem("token");
+  const {
+    cartItems,
+    totalItems,
+    totalPrice,
+    updateItem,
+    removeItem,
+    clearAll,
+  } = useCart();
 
-  useEffect(() => {
-    async function fetchCart() {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+  const increase = async (productId) => {
+    const item = cartItems.find(
+      (item) => item.product._id === productId
+    );
 
-      try {
-        const res = await API.get("/cart", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        console.log("Cart API Response:", res.data);
-
-        setCartItems(res.data.cart || []);
-
-        console.log("API Cart:", res.data.cart);
-        console.log("API Length:", res.data.cart.length);
-
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchCart();
-  }, [token]);
-
-  const placeOrder = async () => {
-    try {
-      const res = await API.post(
-        "/orders",
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      console.log("Cart API Response:", res.data);
-
-      alert(res.data.message);
-
-      setCartItems([]);
-    } catch (err) {
-      alert(err.response?.data?.message || "Order Failed");
+    if (item) {
+      await updateItem(productId, item.quantity + 1);
     }
   };
 
-console.log("Rendered cartItems:", cartItems);
-console.log("Rendered length:", cartItems.length);
+  const decrease = async (productId) => {
+    const item = cartItems.find(
+      (item) => item.product._id === productId
+    );
 
-  if (loading) return <h2>Loading...</h2>;
+    if (item && item.quantity > 1) {
+      await updateItem(productId, item.quantity - 1);
+    } else {
+      await removeItem(productId);
+    }
+  };
 
-  if (!token) return <h2>Please Login First</h2>;
+  const handleRemove = async (productId) => {
+    await removeItem(productId);
+    toast.success("Item removed");
+  };
+
+  const handleClear = async () => {
+    await clearAll();
+    toast.success("Cart cleared");
+  };
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="text-center py-24">
+        <ShoppingBag
+          size={70}
+          className="mx-auto text-gray-300"
+        />
+
+        <h1 className="text-3xl font-bold mt-6">
+          Your cart is empty
+        </h1>
+
+        <p className="text-gray-500 mt-2">
+          Add some products to get started.
+        </p>
+
+        <button
+          onClick={() => navigate("/")}
+          className="mt-8 bg-blue-600 text-white px-7 py-3 rounded-xl"
+        >
+          Continue Shopping
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>My Cart</h1>
+    <div>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-4xl font-bold">
+            Shopping Cart
+          </h1>
 
-      {cartItems.length === 0 ? (
-        <h3>Cart is Empty</h3>
-      ) : (
-        <>
+          <p className="text-gray-500 mt-2">
+            {totalItems} item{totalItems !== 1 ? "s" : ""}
+          </p>
+        </div>
+
+        <button
+          onClick={handleClear}
+          className="flex items-center gap-2 text-red-500"
+        >
+          <Trash2 size={18} />
+          Clear Cart
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-5">
           {cartItems.map((item) => (
-            <div
-              key={item._id}
-              style={{
-                border: "1px solid gray",
-                padding: 20,
-                marginBottom: 20,
-              }}
-            >
-              <h2>{item.product?.name}</h2>
-              <p>{item.product?.description}</p>
-              <h3>₹ {item.product?.price}</h3>
-              <p>Quantity: {item.quantity}</p>
-            </div>
+            <CartItem
+              key={item.product._id}
+              item={item}
+              onIncrease={increase}
+              onDecrease={decrease}
+              onRemove={handleRemove}
+            />
           ))}
+        </div>
 
-          <button onClick={placeOrder}>
-            Place Order
+        <div className="bg-white rounded-2xl shadow p-6 h-fit">
+          <h2 className="text-2xl font-bold">
+            Order Summary
+          </h2>
+
+          <div className="flex justify-between mt-6">
+            <span>Items</span>
+            <span>{totalItems}</span>
+          </div>
+
+          <div className="flex justify-between mt-4">
+            <span>Subtotal</span>
+            <span>₹{totalPrice}</span>
+          </div>
+
+          <div className="flex justify-between mt-4">
+            <span>Delivery</span>
+            <span className="text-green-600">
+              FREE
+            </span>
+          </div>
+
+          <hr className="my-6" />
+
+          <div className="flex justify-between text-xl font-bold">
+            <span>Total</span>
+            <span>₹{totalPrice}</span>
+          </div>
+
+          <button
+            onClick={() => navigate("/checkout")}
+            className="w-full mt-7 bg-blue-600 text-white py-4 rounded-xl font-semibold hover:bg-blue-700"
+          >
+            Proceed to Checkout
           </button>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
