@@ -147,6 +147,10 @@ export function CartProvider({ children }) {
       throw new Error("Please login to remove cart items");
     }
 
+    if (!productId) {
+      throw new Error("Product ID is required");
+    }
+
     try {
       setLoading(true);
 

@@ -9,35 +9,29 @@ import Register from "./pages/Register";
 import Cart from "./pages/Cart";
 import ProductDetails from "./pages/ProductDetails";
 import Profile from "./pages/Profile";
-import ProtectedRoute from "./components/ProtectedRoute";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
+
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
     <>
       <Routes>
-        <Route element={<MainLayout />}>
+       <Route element={<MainLayout />}>
   <Route path="/" element={<Home />} />
-  <Route path="/cart" element={<Cart />} />
-  <Route path="/checkout" element={<Checkout />} />
-  <Route path="/orders" element={<Orders />} />
-  
-          <Route
-            path="/product/:id"
-            element={<ProductDetails />}
-          />
+  <Route path="/product/:id" element={<ProductDetails />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
 
-          <Route path="/login" element={<Login />} />
+  <Route element={<ProtectedRoute />}>
+    <Route path="/cart" element={<Cart />} />
+    <Route path="/checkout" element={<Checkout />} />
+    <Route path="/orders" element={<Orders />} />
+    <Route path="/profile" element={<Profile />} />
+  </Route>
+</Route>
 
-          <Route path="/register" element={<Register />} />
-
-          <Route element={<ProtectedRoute />}>
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/profile" element={<Profile />} />
-          </Route>
-        </Route>
       </Routes>
 
       <Toaster

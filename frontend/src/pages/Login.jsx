@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
 import { useAuth } from "../context/AuthContext";
 import API from "../services/api";
 
@@ -16,10 +17,10 @@ function Login() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -29,12 +30,27 @@ function Login() {
     setLoading(true);
 
     try {
-      const res = await API.post("/auth/login", form);
+      const response = await API.post(
+        "/auth/login",
+        form
+      );
 
-      login(res.data);
+      console.log("Login response:", response.data);
+
+      const success = login(response.data);
+
+      if (!success) {
+        setError("Invalid login response from server.");
+        return;
+      }
 
       navigate("/");
     } catch (err) {
+      console.error(
+        "Login error:",
+        err.response?.data || err.message
+      );
+
       setError(
         err.response?.data?.message ||
           "Login failed. Please try again."
@@ -47,6 +63,7 @@ function Login() {
   return (
     <div className="max-w-md mx-auto py-12">
       <div className="bg-white rounded-2xl shadow-lg p-8">
+
         <h1 className="text-3xl font-bold mb-2">
           Welcome Back
         </h1>
@@ -61,7 +78,10 @@ function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+        >
           <input
             name="email"
             type="email"
@@ -69,6 +89,7 @@ function Login() {
             value={form.email}
             onChange={handleChange}
             required
+            autoComplete="email"
             className="w-full border rounded-xl px-4 py-3"
           />
 
@@ -79,6 +100,7 @@ function Login() {
             value={form.password}
             onChange={handleChange}
             required
+            autoComplete="current-password"
             className="w-full border rounded-xl px-4 py-3"
           />
 
@@ -87,12 +109,15 @@ function Login() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading
+              ? "Logging in..."
+              : "Login"}
           </button>
         </form>
 
         <p className="text-center mt-6 text-gray-600">
           Don't have an account?{" "}
+
           <Link
             to="/register"
             className="text-blue-600 font-semibold"
@@ -100,6 +125,7 @@ function Login() {
             Register
           </Link>
         </p>
+
       </div>
     </div>
   );
