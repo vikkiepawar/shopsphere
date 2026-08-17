@@ -1,5 +1,10 @@
-```jsx
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+
 import API from "../services/api";
 
 const AuthContext = createContext(null);
@@ -8,7 +13,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check existing login when application starts
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("token");
@@ -22,7 +26,10 @@ export function AuthProvider({ children }) {
       try {
         const response = await API.get("/auth/profile");
 
-        if (response.data?.success && response.data?.user) {
+        if (
+          response.data?.success &&
+          response.data?.user
+        ) {
           setUser(response.data.user);
         } else {
           localStorage.removeItem("token");
@@ -44,7 +51,6 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, []);
 
-  // Login
   const login = (data) => {
     if (!data?.token || !data?.user) {
       console.error("Invalid login response:", data);
@@ -57,22 +63,21 @@ export function AuthProvider({ children }) {
     return true;
   };
 
-  // Logout
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    logout,
-    isAuthenticated: !!user,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        isAuthenticated: Boolean(user),
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -82,9 +87,10 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used inside an AuthProvider");
+    throw new Error(
+      "useAuth must be used inside an AuthProvider"
+    );
   }
 
   return context;
 }
-```

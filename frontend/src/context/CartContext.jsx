@@ -1,11 +1,10 @@
-```jsx
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
+  useCallback,
+  useMemo,
 } from "react";
 
 import {
@@ -22,25 +21,8 @@ export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ----------------------------------------
-  // Get token
-  // ----------------------------------------
-  const getToken = () => {
-    return localStorage.getItem("token");
-  };
-
-  // ----------------------------------------
-  // Safely extract cart items
-  // ----------------------------------------
-  const extractCartItems = (response) => {
-    return response?.data?.cart?.items || [];
-  };
-
-  // ----------------------------------------
-  // LOAD CART
-  // ----------------------------------------
   const loadCart = useCallback(async () => {
-    const token = getToken();
+    const token = localStorage.getItem("token");
 
     if (!token) {
       setCartItems([]);
@@ -52,7 +34,7 @@ export function CartProvider({ children }) {
 
       const response = await getCart();
 
-      const items = extractCartItems(response);
+      const items = response?.data?.cart?.items || [];
 
       setCartItems(Array.isArray(items) ? items : []);
     } catch (error) {
@@ -61,7 +43,6 @@ export function CartProvider({ children }) {
         error.response?.data || error.message
       );
 
-      // Only clear local cart if authentication is invalid
       if (
         error.response?.status === 401 ||
         error.response?.status === 403
@@ -73,22 +54,32 @@ export function CartProvider({ children }) {
     }
   }, []);
 
-  // ----------------------------------------
-  // ADD ITEM
-  // ----------------------------------------
-  const addItem = async (productId, quantity = 1) => {
-    const token = getToken();
+  useEffect(() => {
+    loadCart();
 
-    if (!token) {
-      throw new Error("Please login to add products to your cart");
+    const handleStorageChange = (event) => {
+      if (event.key === "token") {
+        loadCart();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener(
+        "storage",
+        handleStorageChange
+      );
+    };
+  }, [loadCart]);
+
+  const addItem = async (productId, quantity = 1) => {
+    if (!localStorage.getItem("token")) {
+      throw new Error("Please login to add products to cart");
     }
 
     if (!productId) {
       throw new Error("Product ID is required");
-    }
-
-    if (quantity < 1) {
-      throw new Error("Quantity must be at least 1");
     }
 
     try {
@@ -96,7 +87,7 @@ export function CartProvider({ children }) {
 
       const response = await addToCart(productId, quantity);
 
-      const items = extractCartItems(response);
+      const items = response?.data?.cart?.items || [];
 
       setCartItems(Array.isArray(items) ? items : []);
 
@@ -113,13 +104,8 @@ export function CartProvider({ children }) {
     }
   };
 
-  // ----------------------------------------
-  // UPDATE ITEM
-  // ----------------------------------------
   const updateItem = async (productId, quantity) => {
-    const token = getToken();
-
-    if (!token) {
+    if (!localStorage.getItem("token")) {
       throw new Error("Please login to update your cart");
     }
 
@@ -127,7 +113,7 @@ export function CartProvider({ children }) {
       throw new Error("Product ID is required");
     }
 
-    if (quantity < 1) {
+    if (quantity <= 0) {
       return removeItem(productId);
     }
 
@@ -139,7 +125,7 @@ export function CartProvider({ children }) {
         quantity
       );
 
-      const items = extractCartItems(response);
+      const items = response?.data?.cart?.items || [];
 
       setCartItems(Array.isArray(items) ? items : []);
 
@@ -156,18 +142,9 @@ export function CartProvider({ children }) {
     }
   };
 
-  // ----------------------------------------
-  // REMOVE ITEM
-  // ----------------------------------------
   const removeItem = async (productId) => {
-    const token = getToken();
-
-    if (!token) {
-      throw new Error("Please login to remove items");
-    }
-
-    if (!productId) {
-      throw new Error("Product ID is required");
+    if (!localStorage.getItem("token")) {
+      throw new Error("Please login to remove cart items");
     }
 
     try {
@@ -175,7 +152,7 @@ export function CartProvider({ children }) {
 
       const response = await removeFromCart(productId);
 
-      const items = extractCartItems(response);
+      const items = response?.data?.cart?.items || [];
 
       setCartItems(Array.isArray(items) ? items : []);
 
@@ -192,13 +169,8 @@ export function CartProvider({ children }) {
     }
   };
 
-  // ----------------------------------------
-  // CLEAR CART
-  // ----------------------------------------
   const clearAll = async () => {
-    const token = getToken();
-
-    if (!token) {
+    if (!localStorage.getItem("token")) {
       setCartItems([]);
       return;
     }
@@ -221,43 +193,14 @@ export function CartProvider({ children }) {
     }
   };
 
-  // ----------------------------------------
-  // AUTH / STORAGE CHANGE
-  // ----------------------------------------
-  useEffect(() => {
-    loadCart();
-
-    const handleStorageChange = (event) => {
-      if (event.key === "token") {
-        loadCart();
-      }
-    };
-
-    window.addEventListener(
-      "storage",
-      handleStorageChange
-    );
-
-    return () => {
-      window.removeEventListener(
-        "storage",
-        handleStorageChange
-      );
-    };
-  }, [loadCart]);
-
-  // ----------------------------------------
-  // TOTAL ITEMS
-  // ----------------------------------------
   const totalItems = useMemo(() => {
-    return cartItems.reduce((total, item) => {
-      return total + Number(item.quantity || 0);
-    }, 0);
+    return cartItems.reduce(
+      (total, item) =>
+        total + Number(item.quantity || 0),
+      0
+    );
   }, [cartItems]);
 
-  // ----------------------------------------
-  // TOTAL PRICE
-  // ----------------------------------------
   const totalPrice = useMemo(() => {
     return cartItems.reduce((total, item) => {
       const price = Number(item.product?.price || 0);
@@ -267,32 +210,25 @@ export function CartProvider({ children }) {
     }, 0);
   }, [cartItems]);
 
-  // ----------------------------------------
-  // CONTEXT VALUE
-  // ----------------------------------------
-  const value = {
-    cartItems,
-    loading,
-    totalItems,
-    totalPrice,
-
-    addItem,
-    updateItem,
-    removeItem,
-    clearAll,
-    loadCart,
-  };
-
   return (
-    <CartContext.Provider value={value}>
+    <CartContext.Provider
+      value={{
+        cartItems,
+        loading,
+        totalItems,
+        totalPrice,
+        addItem,
+        updateItem,
+        removeItem,
+        clearAll,
+        loadCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
 }
 
-// ----------------------------------------
-// useCart Hook
-// ----------------------------------------
 export function useCart() {
   const context = useContext(CartContext);
 
@@ -304,5 +240,3 @@ export function useCart() {
 
   return context;
 }
-```
-
